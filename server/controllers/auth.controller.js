@@ -1,37 +1,33 @@
 import BaseError from "../errors/base.error.js";
 import { UserModel } from "../models/user.model.js";
+import AuthService from "../services/auth.service.js";
 import MailService from "../services/mail.service.js";
 
 class AuthController {
   constructor() {
     this.mailService = new MailService();
+    this.authService = new AuthService();
   }
 
   async login(req, res, next) {
     try {
       const { email, firstName, lastName } = req.body;
-      await this.mailService.sendOtp(email);
-      // const existUser = await UserModel.findOne({ email });
-      // if (existUser)
-      //   throw BaseError.BadRequest("user already exists", {
-      //     email: "user already exists",
-      //   });
+      const ans = await this.authService.login({ email });
 
-      // const createdUser = await UserModel.create({
-      //   email,
-      //   firstName,
-      //   lastName,
-      // });
-
-      res.status(201).json({ email });
+      res.status(201).json(ans);
     } catch (error) {
       next(error);
     }
   }
 
   async verify(req, res, next) {
-    const { email, otp } = req.body;
-    res.json({ email, otp });
+    try {
+      const { email, otp } = req.body;
+      const ans = await this.authService.verify(email, otp);
+      res.status(200).json(ans);
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
