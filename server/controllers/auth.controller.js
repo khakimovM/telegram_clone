@@ -11,7 +11,7 @@ class AuthController {
 
   async login(req, res, next) {
     try {
-      const { email, firstName, lastName } = req.body;
+      const { email } = req.body;
       const ans = await this.authService.login({ email });
 
       res.status(201).json(ans);

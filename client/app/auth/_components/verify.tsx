@@ -15,15 +15,22 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
+import { axiosClient } from "@/http/axios";
 import { otpSchema } from "@/lib/validation";
+import { IError, IUser } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import React from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import z from "zod";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const Verify = () => {
   const { email } = useAuth();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof otpSchema>>({
     resolver: zodResolver(otpSchema),
@@ -33,10 +40,30 @@ const Verify = () => {
     },
   });
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (otp: string) => {
+      const { data } = await axiosClient.post<{ user: IUser }>(
+        "/api/auth/verify",
+        { otp, email },
+      );
+      return data;
+    },
+
+    onSuccess: ({ user }) => {
+      signIn("credentials", { email: user.email, callbackUrl: "/" });
+      toast.success("Successfully verified");
+    },
+
+    onError: (error: IError) => {
+      if (error.response?.data?.message) {
+        return toast.error(error.response?.data?.message);
+      }
+      return toast.error("Something went wrong ");
+    },
+  });
+
   function onSubmit(data: z.infer<typeof otpSchema>) {
-    console.log(data);
-    // API calling
-    window.open("/", "_self");
+    mutate(data.otp);
   }
 
   return (
@@ -75,6 +102,7 @@ const Verify = () => {
                 <FormControl>
                   <InputOTP
                     maxLength={6}
+                    disabled={isPending}
                     {...field}
                     pattern={REGEXP_ONLY_DIGITS}
                   >
@@ -97,6 +125,7 @@ const Verify = () => {
           />
           <Button
             type="submit"
+            disabled={isPending}
             className="w-full bg-blue-500 hover:bg-blue-600"
             size={"lg"}
           >

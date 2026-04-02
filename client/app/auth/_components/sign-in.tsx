@@ -14,6 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useMutation } from "@tanstack/react-query";
+import { axiosClient } from "@/http/axios";
+import { IError } from "@/types";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 const SignIn = () => {
   const { setEmail, setStep } = useAuth();
@@ -25,11 +30,31 @@ const SignIn = () => {
     },
   });
 
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (email: string) => {
+      const { data } = await axiosClient.post<{ email: string }>(
+        "/api/auth/login",
+        { email },
+      );
+      return data;
+    },
+
+    onSuccess: (res) => {
+      setEmail(res.email);
+      setStep("verify");
+      toast.success("Email sent");
+    },
+
+    onError: (error: IError) => {
+      if (error.response?.data?.message) {
+        return toast.error(error.response?.data?.message);
+      }
+      return toast.error("Something went wrong ");
+    },
+  });
+
   function onSubmit(data: z.infer<typeof emailSchema>) {
-    // console.log(data);
-    // API calling to send otp email
-    setStep("verify");
-    setEmail(data.email);
+    mutate(data.email);
   }
   return (
     <div className="w-full">
@@ -45,11 +70,12 @@ const SignIn = () => {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <Label>Email</Label>
                 <FormControl>
                   <Input
                     placeholder="CodeWithAziz"
                     className="h-10 bg-secondary"
+                    disabled={isPending}
                     {...field}
                   />
                 </FormControl>
@@ -61,6 +87,7 @@ const SignIn = () => {
             type="submit"
             className="w-full bg-blue-500 hover:bg-blue-600"
             size={"lg"}
+            disabled={isPending}
           >
             Submit
           </Button>

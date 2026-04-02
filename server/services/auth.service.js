@@ -13,13 +13,14 @@ class AuthService {
       const existUser = await this.userModel.findOne({ email });
 
       if (!existUser) {
-        await this.userModel.create({ email });
+        let newUser = await this.userModel.create({ email });
         await this.mailService.sendOtp(email);
 
-        return { message: "new User" };
+        return { email: newUser.email };
       } else {
         await this.mailService.sendOtp(email);
-        return { message: "existed User" };
+
+        return { email: existUser.email };
       }
     } catch (error) {
       throw new CustomError(error.message, error.status || 500);
@@ -28,15 +29,16 @@ class AuthService {
 
   async verify(email, otp) {
     try {
-      const existUser = await this.userModel.findOne({ email });
-      if (!existUser) throw new CustomError("User not registred", 403);
-
       const result = await this.mailService.verifyOtp(email, otp);
 
       if (!result) throw new CustomError("Otp is not matched", 400);
 
-      await this.userModel.findOneAndUpdate({ email }, { isVerified: true });
-      return { message: "verified" };
+      const user = await this.userModel.findOneAndUpdate(
+        { email },
+        { isVerified: true },
+        { returnDocument: "after" },
+      );
+      return { user };
     } catch (error) {
       throw new CustomError(error.message, error.status);
     }

@@ -6,11 +6,18 @@ import rootRouter from "./routers/routes.js";
 import mongoose from "mongoose";
 import errorHandler from "./utils/error.handler.js";
 import connectDB from "./config/database.js";
+import cors from "cors";
 
 const app = express();
 
 // const server = http.createServer(app);
 app.use(express.json());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  }),
+);
 app.use("/api", rootRouter);
 app.use(errorHandler);
 

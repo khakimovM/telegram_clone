@@ -25,7 +25,7 @@ class MailService {
     await this.otpModel.create({
       email: to,
       otp: hashedOtp,
-      expireAt: new Date(Date.now() + 5 * 60 * 1000),
+      expireAt: new Date(),
     });
 
     await this.transporter.sendMail({

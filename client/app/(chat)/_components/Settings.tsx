@@ -30,6 +30,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import {
   LogIn,
+  LogOut,
   Menu,
   Moon,
   Settings2,
@@ -38,12 +39,14 @@ import {
   UserPlus,
   VolumeOff,
 } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import React, { useState } from "react";
 
 const Settings = () => {
   const { resolvedTheme, setTheme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <>
@@ -54,8 +57,9 @@ const Settings = () => {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-80">
-          <h2 className="pt-2 pl-2 text-muted-foreground">
-            Settings: <span className="text-white">CodeWithAziz</span>
+          <h2 className="pt-3 pl-2 text-muted-foreground text-sm">
+            Settings:{" "}
+            <span className="text-white">{session?.currentUser.email}</span>
           </h2>
 
           <Separator className="mt-2" />
@@ -105,7 +109,10 @@ const Settings = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between bg-destructive p-2 hover:bg-secondary cursor-pointer">
+            <div
+              className="flex items-center justify-between bg-destructive p-2 hover:bg-secondary cursor-pointer"
+              onClick={() => signOut()}
+            >
               <div className="flex items-center gap-1">
                 <LogIn size={16} />
                 <span className="text-sm">LogOut</span>
