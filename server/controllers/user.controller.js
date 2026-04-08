@@ -8,7 +8,7 @@ class UserController {
   // GET
   async getMessages(req, res, next) {
     try {
-      const userId = "69ca77361bd7e5b103b9730d";
+      const userId = req.user._id;
       const { contactId } = req.params;
       const result = await this.userService.getMessages(userId, contactId);
 
@@ -20,7 +20,7 @@ class UserController {
 
   async getContacts(req, res, next) {
     try {
-      const userId = "69ca77361bd7e5b103b9730d";
+      const userId = req.user._id;
       const result = await this.userService.getContacts(userId);
 
       res.status(200).json(result);
@@ -42,7 +42,7 @@ class UserController {
 
   async createContact(req, res, next) {
     try {
-      const userId = "69ca77361bd7e5b103b9730d";
+      const userId = req.user._id;
       const { email } = req.body;
 
       const result = await this.userService.createContact(userId, email);
@@ -67,6 +67,7 @@ class UserController {
   async sendOtp(req, res, next) {
     try {
       const { email } = req.body;
+
       const result = await this.userService.sendOtp(email);
 
       res.status(200).json(result);
@@ -102,9 +103,11 @@ class UserController {
 
   async updateProfile(req, res, next) {
     try {
-      const { userId, ...payload } = req.body;
+      const user = req.user;
 
-      const result = await this.userService.updateProfile(userId, payload);
+      const payload = req.body;
+
+      const result = await this.userService.updateProfile(user._id, payload);
 
       res.status(200).json(result);
     } catch (error) {
@@ -114,7 +117,7 @@ class UserController {
 
   async updateEmail(req, res, next) {
     try {
-      const userId = "69caac6faf7670bc62cef22a";
+      const userId = req.user._id;
       const { email, otp } = req.body;
 
       const result = await this.userService.updateEmail(userId, email, otp);
@@ -140,7 +143,7 @@ class UserController {
 
   async deleteUser(req, res, next) {
     try {
-      const userId = "69cc008bdb4888aa0f8ad111";
+      const userId = req.user._id;
       const result = await this.userService.deleteUser(userId);
 
       res.status(200).json(result);

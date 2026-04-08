@@ -53,13 +53,6 @@ const Verify = () => {
       signIn("credentials", { email: user.email, callbackUrl: "/" });
       toast.success("Successfully verified");
     },
-
-    onError: (error: IError) => {
-      if (error.response?.data?.message) {
-        return toast.error(error.response?.data?.message);
-      }
-      return toast.error("Something went wrong ");
-    },
   });
 
   function onSubmit(data: z.infer<typeof otpSchema>) {

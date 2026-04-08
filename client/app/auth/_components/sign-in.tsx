@@ -1,5 +1,4 @@
 import { emailSchema } from "@/lib/validation";
-import React from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +7,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -16,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { axiosClient } from "@/http/axios";
-import { IError } from "@/types";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 
@@ -43,13 +40,6 @@ const SignIn = () => {
       setEmail(res.email);
       setStep("verify");
       toast.success("Email sent");
-    },
-
-    onError: (error: IError) => {
-      if (error.response?.data?.message) {
-        return toast.error(error.response?.data?.message);
-      }
-      return toast.error("Something went wrong ");
     },
   });
 

@@ -28,8 +28,8 @@ export const messageSchema = z.object({
 });
 
 export const profileScheme = z.object({
-  firstname: z.string().min(2),
-  lastname: z.string().optional(),
+  firstName: z.string().min(2),
+  lastName: z.string().optional(),
   bio: z.string().optional(),
 });
 

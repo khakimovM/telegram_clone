@@ -8,6 +8,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useLoading } from "@/hooks/use-loading";
 import { emailSchema } from "@/lib/validation";
 import React, { FC } from "react";
 import { UseFormReturn } from "react-hook-form";
@@ -20,6 +21,8 @@ interface Props {
 }
 
 const AddContact: FC<Props> = ({ contactForm, onCreateContact }) => {
+  const { isCreating } = useLoading();
+
   return (
     <div className="h-screen w-full flex relative">
       <div className="flex items-center justify-center z-50 w-full">
@@ -44,6 +47,7 @@ const AddContact: FC<Props> = ({ contactForm, onCreateContact }) => {
                       <Input
                         placeholder="CodeWithAziz"
                         className="h-10 bg-secondary"
+                        disabled={isCreating}
                         {...field}
                       />
                     </FormControl>
@@ -55,6 +59,7 @@ const AddContact: FC<Props> = ({ contactForm, onCreateContact }) => {
                 type="submit"
                 className="w-full bg-blue-500 hover:bg-blue-600"
                 size={"lg"}
+                disabled={isCreating}
               >
                 Submit
               </Button>

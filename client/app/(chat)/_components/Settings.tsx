@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -28,7 +28,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { axiosClient } from "@/http/axios";
+import { generateToken } from "@/lib/generate-token";
+import { UploadButton, UploadDropzone } from "@/lib/uploadthing";
+import { useMutation } from "@tanstack/react-query";
 import {
+  Loader2,
   LogIn,
   LogOut,
   Menu,
@@ -42,11 +47,28 @@ import {
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 const Settings = () => {
   const { resolvedTheme, setTheme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (payload: IPayload) => {
+      const token = await generateToken(session?.currentUser._id);
+      const { data } = await axiosClient.put("/api/user/profile", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      return data;
+    },
+
+    onSuccess: () => {
+      toast.success("Notification updates");
+      update();
+    },
+  });
 
   return (
     <>
@@ -75,7 +97,10 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-2 hover:bg-secondary cursor-pointer">
+            <div
+              className="flex items-center justify-between p-2 hover:bg-secondary cursor-pointer"
+              onClick={() => window.location.reload()}
+            >
               <div className="flex items-center gap-1">
                 <UserPlus size={16} />
                 <span className="text-sm">Create Contact</span>
@@ -87,7 +112,13 @@ const Settings = () => {
                 <VolumeOff size={16} />
                 <span className="text-sm">Mute</span>
               </div>
-              <Switch />
+              <Switch
+                checked={!session?.currentUser.muted}
+                disabled={isPending}
+                onCheckedChange={() =>
+                  mutate({ muted: !session?.currentUser.muted })
+                }
+              />
             </div>
 
             <div className="flex items-center justify-between p-2 hover:bg-secondary cursor-pointer">
@@ -133,14 +164,41 @@ const Settings = () => {
 
           <div className="mx-auto w-36 h-36 relative">
             <Avatar className="w-full h-36">
+              <AvatarImage
+                src={session?.currentUser.avatar}
+                alt={session?.currentUser.email}
+                className="object-cover"
+              />
               <AvatarFallback className="text-6xl uppercase font-spaceGrotest">
                 SB
               </AvatarFallback>
             </Avatar>
 
-            <Button size={"icon"} className="absolute right-0 bottom-0">
+            <UploadButton
+              endpoint={"imageUploader"}
+              onClientUploadComplete={(res) => {
+                console.log(res);
+                mutate({ avatar: res[0].url });
+              }}
+              config={{ appendOnPaste: true, mode: "auto" }}
+              className="absolute right-0 bottom-0 bg-primary rounded-full"
+              appearance={{
+                allowedContent: { display: "none" },
+                button: { width: 40, height: 40, borderRadius: "100%" },
+              }}
+              content={{
+                button({ isUploading }) {
+                  if (isUploading) {
+                    return <Loader2 size={16} className="animate-spin" />;
+                  }
+                  return <Upload size={16} />;
+                },
+              }}
+            />
+
+            {/* <Button size={"icon"} className="absolute right-0 bottom-0">
               <Upload size={16} />
-            </Button>
+            </Button> */}
           </div>
 
           <Accordion type="single" collapsible className="mt-1">
@@ -187,3 +245,8 @@ const Settings = () => {
 };
 
 export default Settings;
+
+interface IPayload {
+  muted?: boolean;
+  avatar?: string;
+}

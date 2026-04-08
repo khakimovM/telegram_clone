@@ -57,8 +57,6 @@ class UserService {
         .populate({ path: "receiver" })
         .sort({ createdAt: -1 });
 
-      console.log(lastMessage);
-
       contact.lastMessage = lastMessage;
     }
 
@@ -103,7 +101,7 @@ class UserService {
       { returnDocument: "after" },
     );
 
-    return { message: "Contact added succesfully", contact: addedContact };
+    return { contact: addedContact };
   }
 
   async createReaction(messageId, reaction) {
@@ -130,7 +128,7 @@ class UserService {
       throw new CustomError(`error with smtp: ${error.message}`, 500);
     }
 
-    return { message: "Otp sent succesfully" };
+    return { email };
   }
 
   async messageRead(messages) {

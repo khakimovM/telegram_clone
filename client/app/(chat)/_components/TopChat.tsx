@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/use-auth";
 import { useCurrentContact } from "@/hooks/use-current";
 import { Settings2 } from "lucide-react";
 import Image from "next/image";
@@ -15,6 +16,7 @@ import React from "react";
 
 const TopChat = () => {
   const { currentContact } = useCurrentContact();
+  const { onlineUsers } = useAuth();
 
   return (
     <div className="w-full flex justify-between items-center h-[8vh] border-b sticky top-0 z-50 p-2 bg-background">
@@ -48,10 +50,16 @@ const TopChat = () => {
           </div> */}
 
           <p className="text-xs">
-            {/* Online */}
-            {/* <span className="text-green-500">●</span> Online */}
-            {/* Offline */}
-            <span className="text-muted-foreground">●</span> Last seen recently
+            {onlineUsers.some((user) => user._id === currentContact?._id) ? (
+              <>
+                <span className="text-green-500">●</span> Online
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">●</span> Last seen
+                recently
+              </>
+            )}
           </p>
         </div>
       </div>

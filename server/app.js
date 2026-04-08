@@ -18,6 +18,7 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE"],
   }),
 );
+app.use(cookieParser());
 app.use("/api", rootRouter);
 app.use(errorHandler);
 
