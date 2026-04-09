@@ -17,13 +17,18 @@ import {
 } from "@/components/ui/popover";
 import { useTheme } from "next-themes";
 import { ModeToggle } from "@/components/shared/modeToggle";
+import { useLoading } from "@/hooks/use-loading";
+import { IMessage, IUser } from "@/types";
 
 interface Props {
   onSendMessage: (values: z.infer<typeof messageSchema>) => void;
   messageForm: UseFormReturn<z.infer<typeof messageSchema>>;
+  messages: IMessage[];
 }
 
-const Chat: FC<Props> = ({ onSendMessage, messageForm }) => {
+const Chat: FC<Props> = ({ onSendMessage, messageForm, messages }) => {
+  const { loadMessage } = useLoading();
+
   const { resolvedTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -45,20 +50,25 @@ const Chat: FC<Props> = ({ onSendMessage, messageForm }) => {
   return (
     <div className="min-h-[92vh] flex flex-col justify-end z-40">
       {/* Loading */}
-      {/* <ChatLoading /> */}
+      {loadMessage && <ChatLoading />}
 
       {/* Messages */}
-      {/* <MessageCard isReceived /> */}
+
+      {messages.map((message) => (
+        <MessageCard key={message._id} message={message} />
+      ))}
 
       {/* Start conversation */}
-      <div className="w-full h-[88vh] flex items-center justify-center">
-        <div
-          className="text-[100px] cursor-pointer"
-          onClick={() => onSendMessage({ text: "👋" })}
-        >
-          👋
+      {messages.length === 0 && (
+        <div className="w-full h-[88vh] flex items-center justify-center">
+          <div
+            className="text-[100px] cursor-pointer"
+            onClick={() => onSendMessage({ text: "👋" })}
+          >
+            👋
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages input */}
       <Form {...messageForm}>

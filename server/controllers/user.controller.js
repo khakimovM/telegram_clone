@@ -33,7 +33,11 @@ class UserController {
   async createMessage(req, res, next) {
     try {
       const data = req.body;
-      const result = await this.userService.createMessage(data);
+      const userId = req.user._id;
+      const result = await this.userService.createMessage({
+        ...data,
+        sender: userId,
+      });
       res.status(201).json(result);
     } catch (error) {
       next(error);

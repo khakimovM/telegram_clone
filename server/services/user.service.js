@@ -65,12 +65,15 @@ class UserService {
 
   // POST
   async createMessage(data) {
-    const newMessage = await this.messageModel.create(data);
-    const currentMessage = await this.messageModel
-      .findById(newMessage._id)
-      .populate({ path: "sender", select: "email" })
-      .populate({ path: "receiver", select: "email" });
-    return { newMessage: currentMessage };
+    const createdMessage = await this.messageModel.create(data);
+    const newMessage = await this.messageModel
+      .findById(createdMessage._id)
+      .populate({ path: "sender" })
+      .populate({ path: "receiver" });
+
+    const receiver = await this.userModel.findById(createdMessage.receiver);
+    const sender = await this.userModel.findById(createdMessage.sender);
+    return { newMessage, receiver, sender };
   }
 
   async createContact(userId, contactEmail) {
