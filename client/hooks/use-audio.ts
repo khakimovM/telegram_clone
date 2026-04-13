@@ -2,15 +2,26 @@
 
 const useAudio = () => {
   const playSound = (sound: string) => {
-    // Next.js public papkasidagi yo'lni aniqlaymiz
-    const audioPath = `/audio/${sound}`;
+    if (!sound) return;
 
-    // Yangi audio obyekti yaratamiz
+    // Fayl yo'lini tekshiring (O'zingizga moslang)
+    // Agar sound o'zi to'liq URL bo'lsa (masalan: http://...), unda shunchaki sound ni bering
+    const audioPath = sound.startsWith("http") ? sound : `/audio/${sound}`;
+
     const audio = new Audio(audioPath);
 
-    // Ovozni ijro etamiz
+    // Brauzer avtomatik ijroni bloklasa, xatolik catch ga tushadi
     audio.play().catch((err) => {
-      console.error("Audio ijro etishda xatolik:", err);
+      if (err.name === "NotAllowedError") {
+        console.warn("Ovoz bloklandi: Foydalanuvchi interaksiyasi kerak.");
+      } else if (err.name === "NotSupportedError") {
+        console.error(
+          "Xato: Audio fayl topilmadi yoki format noto'g'ri. Manzil:",
+          audioPath,
+        );
+      } else {
+        console.error("Audio ijro xatosi:", err);
+      }
     });
   };
 

@@ -54,4 +54,11 @@ io.on("connection", (socket) => {
         .emit("getNewMessage", { newMessage, sender, receiver });
     }
   });
+
+  socket.on("readMessages", (receiver, messages) => {
+    const receiverSocketId = getSocketId(receiver._id);
+    if (receiverSocketId) {
+      socket.to(receiverSocketId).emit("getReadMessages", messages);
+    }
+  });
 });

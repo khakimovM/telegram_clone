@@ -3,7 +3,7 @@
 import { Loader2 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ContactList from "./_components/ContactList";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AddContact from "./_components/AddContact";
 import { useCurrentContact } from "@/hooks/use-current";
 import { useForm } from "react-hook-form";
@@ -21,92 +21,154 @@ import { toast } from "sonner";
 import { io } from "socket.io-client";
 import { useAuth } from "@/hooks/use-auth";
 import useAudio from "@/hooks/use-audio";
+import { CONST } from "@/lib/constants";
 
 const Homepage = () => {
   const [contacts, setContacts] = useState<IUser[]>([]);
   const [messages, setMessages] = useState<IMessage[]>([]);
 
-  const { setCreating, setLoading, isLoading, loadMessage, setLoadMessage } =
-    useLoading();
-  const { currentContact, setCurrentContact } = useCurrentContact();
+  const { setCreating, setLoading, isLoading, setLoadMessage } = useLoading();
+  const { currentContact } = useCurrentContact();
   const { data: session } = useSession();
   const { setOnlineUsers } = useAuth();
   const { playSound } = useAudio();
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const socket = useRef<ReturnType<typeof io> | null>(null);
+
+  const contact_ID = searchParams.get("chat");
 
   const contactForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
   });
 
   const messageForm = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
-    defaultValues: {
-      text: "",
-      image: "",
-    },
+    defaultValues: { text: "", image: "" },
   });
 
+  // Kontaktlarni olish
   const getContacts = async () => {
     setLoading(true);
     const token = await generateToken(session?.currentUser._id);
     try {
       const { data } = await axiosClient.get<{ contacts: IUser[] }>(
-        "api/user/contacts",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        "/api/user/contacts",
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setContacts(data.contacts);
-    } catch (error) {
-      toast.error("can not fetch contacts");
+    } catch {
+      toast.error("Can not fetch contacts");
     } finally {
       setLoading(false);
     }
   };
 
+  // Xabarlarni olish
   const getMessages = async () => {
+    if (!currentContact?._id) return;
     setLoadMessage(true);
     const token = await generateToken(session?.currentUser._id);
     try {
       const { data } = await axiosClient.get<{ messages: IMessage[] }>(
-        `/api/user/messages/${currentContact?._id}`,
+        `/api/user/messages/${currentContact._id}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setMessages(data.messages);
-    } catch (error) {
+
+      // Xabarlar ochilganda oxirgi xabarni o'qilgan deb belgilash
+      setContacts((prev) =>
+        prev.map((item) =>
+          item._id === currentContact._id
+            ? {
+                ...item,
+                lastMessage: item.lastMessage
+                  ? { ...item.lastMessage, status: CONST.READ }
+                  : null,
+              }
+            : item,
+        ),
+      );
+    } catch {
+      toast.error("Cannot fetch messages");
     } finally {
       setLoadMessage(false);
     }
   };
 
-  const onSendMessage = async (value: z.infer<typeof messageSchema>) => {
+  // Xabar yuborish
+  const onSendMessage = async (values: z.infer<typeof messageSchema>) => {
     setCreating(true);
     const token = await generateToken(session?.currentUser._id);
     try {
       const { data } = await axiosClient.post<IGetSocketType>(
         "/api/user/message",
-        { ...value, receiver: currentContact?._id },
+        { ...values, receiver: currentContact?._id },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setMessages((prev) => [...prev, data.newMessage]);
       messageForm.reset();
+
+      // Socket orqali yuborish
       socket.current?.emit("sendMessage", {
         newMessage: data.newMessage,
         receiver: data.receiver,
         sender: data.sender,
       });
-    } catch (error) {
+
+      // Kontaktlar ro'yxatida oxirgi xabarni yangilash
+      setContacts((prev) =>
+        prev.map((item) =>
+          item._id === currentContact?._id
+            ? {
+                ...item,
+                lastMessage: { ...data.newMessage, status: CONST.READ },
+              }
+            : item,
+        ),
+      );
+    } catch {
+      toast.error("Cannot send message");
     } finally {
       setCreating(false);
     }
   };
 
+  // Xabarlarni o'qilgan deb belgilash
+  const onReadMessages = async () => {
+    const receivedMessages = messages.filter(
+      (m) =>
+        m.receiver._id === session?.currentUser?._id && m.status !== CONST.READ,
+    );
+
+    if (receivedMessages.length === 0) return;
+
+    try {
+      const token = await generateToken(session?.currentUser._id);
+      const { data } = await axiosClient.post<{ messages: IMessage[] }>(
+        "/api/user/message-read",
+        { messages: receivedMessages },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      // Socket serveringizga to'g'ri tartibda yuborish: (receiver, messages)
+      socket.current?.emit("readMessages", currentContact, data.messages);
+
+      setMessages((prev) =>
+        prev.map((item) => {
+          const isRead = data.messages.find((msg) => msg._id === item._id);
+          return isRead ? { ...item, status: CONST.READ } : item;
+        }),
+      );
+    } catch {
+      toast.error("Cannot read messages");
+    }
+  };
+
+  // Kontakt qo'shish
   const onCreateContact = async (values: z.infer<typeof emailSchema>) => {
     setCreating(true);
     try {
@@ -116,31 +178,35 @@ const Homepage = () => {
         values,
         { headers: { Authorization: `Bearer ${token}` } },
       );
+
       setContacts((prev) => [...prev, data.contact]);
       socket.current?.emit("createContact", {
         currentUser: session?.currentUser,
         receiver: data.contact,
       });
-      toast.success("contact added succesfully");
+      toast.success("Contact added successfully");
       contactForm.reset();
     } catch (error: any) {
-      if ((error as IError).response?.data?.message) {
-        return toast.error((error as IError).response?.data?.message);
-      }
-      return toast.error("Something went wrong ");
+      const msg =
+        (error as IError).response?.data?.message || "Something went wrong";
+      toast.error(msg);
     } finally {
       setCreating(false);
     }
   };
 
+  // Socket ulanish
   useEffect(() => {
     router.replace("/");
-    socket.current = io(`ws://localhost:5000`);
-    console.log("Socket connected");
+    socket.current = io("ws://localhost:5000");
+    return () => {
+      socket.current?.disconnect();
+    }; // Cleanup
   }, []);
 
+  // Onlayn foydalanuvchilar
   useEffect(() => {
-    if (session?.currentUser._id) {
+    if (session?.currentUser?._id) {
       socket.current?.emit("addOnlineUsers", session.currentUser);
       socket.current?.on(
         "getOnlineUsers",
@@ -152,81 +218,92 @@ const Homepage = () => {
     }
   }, [session?.currentUser]);
 
+  // Socket tinglovchilari (Events)
   useEffect(() => {
-    if (session?.currentUser) {
-      socket.current?.on("getCreateUser", (user) => {
-        console.log("Created by user", user);
-        setContacts((prev) => {
-          const isExist = prev.some((item) => item._id === user._id);
+    if (!socket.current) return;
 
-          return isExist ? prev : [...prev, user];
-        });
+    socket.current.on("getCreateUser", (user) => {
+      setContacts((prev) => {
+        if (prev.some((c) => c._id === user._id)) return prev;
+        return [...prev, user];
       });
+    });
 
-      socket.current?.on(
-        "getNewMessage",
-        ({ newMessage, sender, receiver }: IGetSocketType) => {
-          setMessages((prev) => {
-            const isExist = prev.some((item) => item._id === newMessage._id);
-            return isExist ? prev : [...prev, newMessage];
-          });
+    socket.current.on(
+      "getNewMessage",
+      ({ newMessage, sender, receiver }: IGetSocketType) => {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === newMessage._id)) return prev;
+          return [...prev, newMessage];
+        });
 
-          toast.info(`New message`, {
-            description: `${sender.email.split("@")[0]} sent you a message`,
-            position: "top-right",
-          });
+        setContacts((prev) =>
+          prev.map((contact) => {
+            if (contact._id === sender._id) {
+              return {
+                ...contact,
+                lastMessage: {
+                  ...newMessage,
+                  status:
+                    contact_ID === sender._id ? CONST.READ : newMessage.status,
+                },
+              };
+            }
+            return contact;
+          }),
+        );
 
-          if (!receiver.muted) {
-            playSound(receiver.notificationSound);
-          }
-        },
+        toast.info(`New message from ${sender.email.split("@")[0]}`);
+        if (!receiver.muted) playSound(receiver.notificationSound);
+      },
+    );
+
+    socket.current.on("getReadMessages", (messages: IMessage[]) => {
+      setMessages((prev) =>
+        prev.map((item) => {
+          const isRead = messages.find((msg) => msg._id === item._id);
+          return isRead ? { ...item, status: CONST.READ } : item;
+        }),
       );
-    }
-  }, [session?.currentUser, socket]);
+    });
+
+    return () => {
+      socket.current?.off("getCreateUser");
+      socket.current?.off("getNewMessage");
+      socket.current?.off("getReadMessages");
+    };
+  }, [session?.currentUser, contact_ID]);
 
   useEffect(() => {
-    if (currentContact?._id) {
-      getMessages();
-    }
-  }, [currentContact]);
+    getMessages();
+  }, [currentContact?._id]);
 
   return (
     <>
-      {/* Sidebar */}
-      <div className="w-80 h-screen border-r inset-0 fixed z-50">
-        {/* Loading */}
-        {isLoading && (
+      <div className="w-80 h-screen border-r inset-0 fixed z-50 bg-background">
+        {isLoading ? (
           <div className="w-full h-[95vh] flex justify-center items-center">
             <Loader2 size={50} className="animate-spin" />
           </div>
+        ) : (
+          <ContactList contacts={contacts} />
         )}
-
-        {/* Contact List */}
-        {!isLoading && <ContactList contacts={contacts} />}
       </div>
 
-      {/* Chat area*/}
       <div className="pl-80 w-full">
-        {/* Add contact */}
-
-        {!currentContact?._id && (
+        {!currentContact?._id ? (
           <AddContact
             contactForm={contactForm}
             onCreateContact={onCreateContact}
           />
-        )}
-
-        {/* Chat */}
-
-        {currentContact?._id && (
+        ) : (
           <div className="w-full relative">
-            {/* Top chat */}
             <TopChat />
-            {/* Chat message */}
             <Chat
               messageForm={messageForm}
               onSendMessage={onSendMessage}
               messages={messages}
+              onReadMessages={onReadMessages}
             />
           </div>
         )}

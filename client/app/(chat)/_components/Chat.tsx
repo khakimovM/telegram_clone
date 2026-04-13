@@ -5,7 +5,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { messageSchema } from "@/lib/validation";
 import { Paperclip, Send, Smile } from "lucide-react";
-import React, { FC, useRef } from "react";
+import React, { FC, useEffect, useRef } from "react";
 import { UseFormReturn } from "react-hook-form";
 import z from "zod";
 import emojies from "@emoji-mart/data";
@@ -21,16 +21,23 @@ import { useLoading } from "@/hooks/use-loading";
 import { IMessage, IUser } from "@/types";
 
 interface Props {
-  onSendMessage: (values: z.infer<typeof messageSchema>) => void;
+  onSendMessage: (values: z.infer<typeof messageSchema>) => Promise<void>;
+  onReadMessages: () => Promise<void>;
   messageForm: UseFormReturn<z.infer<typeof messageSchema>>;
   messages: IMessage[];
 }
 
-const Chat: FC<Props> = ({ onSendMessage, messageForm, messages }) => {
+const Chat: FC<Props> = ({
+  onSendMessage,
+  messageForm,
+  messages,
+  onReadMessages,
+}) => {
   const { loadMessage } = useLoading();
 
   const { resolvedTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const scrollRef = useRef<HTMLFormElement | null>(null);
 
   const handleEmojiSelect = (emoji: string) => {
     const input = inputRef.current;
@@ -47,13 +54,18 @@ const Chat: FC<Props> = ({ onSendMessage, messageForm, messages }) => {
       input.setSelectionRange(start + emoji.length, start + emoji.length);
     }, 0);
   };
+
+  useEffect(() => {
+    onReadMessages();
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   return (
     <div className="min-h-[92vh] flex flex-col justify-end z-40">
       {/* Loading */}
       {loadMessage && <ChatLoading />}
 
       {/* Messages */}
-
       {messages.map((message) => (
         <MessageCard key={message._id} message={message} />
       ))}
@@ -75,6 +87,7 @@ const Chat: FC<Props> = ({ onSendMessage, messageForm, messages }) => {
         <form
           onSubmit={messageForm.handleSubmit(onSendMessage)}
           className="w-full flex relative gap-1"
+          ref={scrollRef}
         >
           <Button size={"icon"} type="button" variant={"secondary"}>
             <Paperclip />
