@@ -55,10 +55,34 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("readMessages", (receiver, messages) => {
+  socket.on("readMessages", ({ receiver, messages }) => {
     const receiverSocketId = getSocketId(receiver._id);
     if (receiverSocketId) {
       socket.to(receiverSocketId).emit("getReadMessages", messages);
     }
   });
+
+  socket.on("updateMessage", ({ updatedMessage, sender, receiver }) => {
+    const receiverSocketId = getSocketId(receiver._id);
+    if (receiverSocketId) {
+      socket
+        .to(receiverSocketId)
+        .emit("getUpdatedMessage", { updatedMessage, sender, receiver });
+    }
+  });
+
+  socket.on(
+    "deleteMessage",
+    ({ deletedMessage, receiver, sender, filteredMessages }) => {
+      const receiverSocketId = getSocketId(receiver._id);
+      if (receiverSocketId) {
+        socket.to(receiverSocketId).emit("getDeletedMessage", {
+          deletedMessage,
+          receiver,
+          sender,
+          filteredMessages,
+        });
+      }
+    },
+  );
 });

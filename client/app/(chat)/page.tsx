@@ -28,7 +28,8 @@ const Homepage = () => {
   const [messages, setMessages] = useState<IMessage[]>([]);
 
   const { setCreating, setLoading, isLoading, setLoadMessage } = useLoading();
-  const { currentContact } = useCurrentContact();
+  const { currentContact, editedMessage, setEditedMesssage } =
+    useCurrentContact();
   const { data: session } = useSession();
   const { setOnlineUsers } = useAuth();
   const { playSound } = useAudio();
@@ -137,6 +138,16 @@ const Homepage = () => {
     }
   };
 
+  // MEssageni Submit qilish
+  const onSubmitMessage = async (values: z.infer<typeof messageSchema>) => {
+    setCreating(true);
+    if (editedMessage?._id) {
+      onEditMessage(editedMessage._id, values.text);
+    } else {
+      onSendMessage(values);
+    }
+  };
+
   // Xabarlarni o'qilgan deb belgilash
   const onReadMessages = async () => {
     const receivedMessages = messages.filter(
@@ -155,7 +166,10 @@ const Homepage = () => {
       );
 
       // Socket serveringizga to'g'ri tartibda yuborish: (receiver, messages)
-      socket.current?.emit("readMessages", currentContact, data.messages);
+      socket.current?.emit("readMessages", {
+        messages: receivedMessages,
+        receiver: currentContact,
+      });
 
       setMessages((prev) =>
         prev.map((item) => {
@@ -192,6 +206,123 @@ const Homepage = () => {
       toast.error(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Reaksiya yaratish
+  const onReaction = async (reaction: string, messageId: string) => {
+    const token = await generateToken(session?.currentUser._id);
+    try {
+      const { data } = await axiosClient.post<{ updatedMessage: IMessage }>(
+        "/api/user/reaction",
+        { reaction, messageId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item._id === data.updatedMessage._id
+            ? { ...item, reaction: data.updatedMessage.reaction }
+            : item,
+        ),
+      );
+
+      socket.current?.emit("updateMessage", {
+        updatedMessage: data.updatedMessage,
+        receiver: currentContact,
+        sender: session?.currentUser,
+      });
+    } catch (error) {
+      toast.error("cannot react to message");
+    }
+  };
+
+  // Message o'chirish
+  const onDeleteMessage = async (messageId: string) => {
+    const token = await generateToken(session?.currentUser._id);
+    try {
+      const { data } = await axiosClient.delete<{ deletedMessage: IMessage }>(
+        `/api/user/message/${messageId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const filteredMessages = messages.filter(
+        (item) => item._id !== data.deletedMessage._id,
+      );
+      const lastMessage = filteredMessages.length
+        ? filteredMessages[filteredMessages.length - 1]
+        : null;
+      setMessages(filteredMessages);
+
+      socket.current?.emit("deleteMessage", {
+        deletedMessage: data.deletedMessage,
+        sender: session?.currentUser,
+        receiver: currentContact,
+        filteredMessages,
+      });
+
+      setContacts((prev) =>
+        prev.map((item) =>
+          item._id === currentContact?._id
+            ? {
+                ...item,
+                lastMessage:
+                  item.lastMessage?._id === messageId
+                    ? lastMessage
+                    : item.lastMessage,
+              }
+            : item,
+        ),
+      );
+    } catch (error) {
+      toast.error("Cannot delete message");
+    }
+  };
+
+  // Messageni edit qilish
+  const onEditMessage = async (messageId: string, text: string) => {
+    const token = await generateToken(session?.currentUser._id);
+    try {
+      const { data } = await axiosClient.put<{ updatedMessage: IMessage }>(
+        `/api/user/message/${messageId}`,
+        { text },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item._id === data.updatedMessage._id
+            ? { ...item, text: data.updatedMessage.text }
+            : item,
+        ),
+      );
+
+      socket.current?.emit("updateMessage", {
+        updatedMessage: data.updatedMessage,
+        receiver: currentContact,
+        sender: session?.currentUser,
+      });
+
+      messageForm.reset();
+
+      setContacts((prev) =>
+        prev.map((item) =>
+          item._id === currentContact?._id
+            ? {
+                ...item,
+                lastMessage:
+                  item.lastMessage?._id === messageId
+                    ? data.updatedMessage
+                    : item.lastMessage,
+              }
+            : item,
+        ),
+      );
+      setEditedMesssage(null);
+    } catch (error) {
+      toast.error("Cannot edit message");
     }
   };
 
@@ -267,6 +398,65 @@ const Homepage = () => {
       );
     });
 
+    socket.current.on(
+      "getUpdatedMessage",
+      ({ updatedMessage, sender, receiver }: IGetRectionType) => {
+        setMessages((prev) =>
+          prev.map((item) =>
+            item._id === updatedMessage._id
+              ? {
+                  ...item,
+                  reaction: updatedMessage.reaction,
+                  text: updatedMessage.text,
+                }
+              : item,
+          ),
+        );
+
+        setContacts((prev) =>
+          prev.map((item) =>
+            item._id === sender._id
+              ? {
+                  ...item,
+                  lastMessage:
+                    item.lastMessage?._id === updatedMessage._id
+                      ? updatedMessage
+                      : item.lastMessage,
+                }
+              : item,
+          ),
+        );
+      },
+    );
+
+    socket.current.on(
+      "getDeletedMessage",
+      ({
+        deletedMessage,
+        receiver,
+        sender,
+        filteredMessages,
+      }: IGetDeleteMessageType) => {
+        setMessages(filteredMessages);
+        const lastMessage = filteredMessages.length
+          ? filteredMessages[filteredMessages.length - 1]
+          : null;
+        setContacts((prev) =>
+          prev.map((item) =>
+            item._id === sender._id
+              ? {
+                  ...item,
+                  lastMessage:
+                    item.lastMessage?._id === deletedMessage._id
+                      ? lastMessage
+                      : item.lastMessage,
+                }
+              : item,
+          ),
+        );
+      },
+    );
+
     return () => {
       socket.current?.off("getCreateUser");
       socket.current?.off("getNewMessage");
@@ -301,9 +491,11 @@ const Homepage = () => {
             <TopChat />
             <Chat
               messageForm={messageForm}
-              onSendMessage={onSendMessage}
+              onSubmitMessage={onSubmitMessage}
               messages={messages}
               onReadMessages={onReadMessages}
+              onReaction={onReaction}
+              onDeleteMessage={onDeleteMessage}
             />
           </div>
         )}
@@ -318,4 +510,18 @@ interface IGetSocketType {
   receiver: IUser;
   sender: IUser;
   newMessage: IMessage;
+  updatedMessage?: IMessage;
+}
+
+interface IGetRectionType {
+  receiver: IUser;
+  sender: IUser;
+  updatedMessage: IMessage;
+}
+
+interface IGetDeleteMessageType {
+  receiver: IUser;
+  sender: IUser;
+  deletedMessage: IMessage;
+  filteredMessages: IMessage[];
 }

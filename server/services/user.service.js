@@ -191,8 +191,8 @@ class UserService {
 
   // DELETE
   async deleteMessage(messageId) {
-    await this.messageModel.findByIdAndDelete(messageId);
-    return { message: "Message succesfully deleted" };
+    const deletedMessage = await this.messageModel.findByIdAndDelete(messageId);
+    return { message: "Message succesfully deleted", deletedMessage };
   }
 
   async deleteUser(userId) {
