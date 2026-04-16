@@ -28,7 +28,7 @@ export default function RootLayout({
       <QueryProvider>
         <html lang="en" suppressHydrationWarning>
           <body
-            className={`${spaceGrotest.variable}  antialiased`}
+            className={`${spaceGrotest.variable}  antialiased sidebar-custom-scrollbar`}
             suppressHydrationWarning
           >
             <ThemeProvider

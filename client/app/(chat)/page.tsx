@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { ChangeEvent, useEffect, useRef, useState } from "react";
 import ContactList from "./_components/ContactList";
 import { useRouter, useSearchParams } from "next/navigation";
 import AddContact from "./_components/AddContact";
@@ -27,7 +27,8 @@ const Homepage = () => {
   const [contacts, setContacts] = useState<IUser[]>([]);
   const [messages, setMessages] = useState<IMessage[]>([]);
 
-  const { setCreating, setLoading, isLoading, setLoadMessage } = useLoading();
+  const { setCreating, setLoading, isLoading, setLoadMessage, setTyping } =
+    useLoading();
   const { currentContact, editedMessage, setEditedMesssage } =
     useCurrentContact();
   const { data: session } = useSession();
@@ -326,6 +327,15 @@ const Homepage = () => {
     }
   };
 
+  // Real time typing
+  const onTyping = (e: ChangeEvent<HTMLInputElement>) => {
+    socket.current?.emit("typing", {
+      receiver: currentContact,
+      sender: session?.currentUser,
+      message: e.target.value,
+    });
+  };
+
   // Socket ulanish
   useEffect(() => {
     router.replace("/");
@@ -363,10 +373,10 @@ const Homepage = () => {
     socket.current.on(
       "getNewMessage",
       ({ newMessage, sender, receiver }: IGetSocketType) => {
-        setMessages((prev) => {
-          if (prev.some((m) => m._id === newMessage._id)) return prev;
-          return [...prev, newMessage];
-        });
+        setTyping("");
+        if (contact_ID === sender._id) {
+          setMessages((prev) => [...prev, newMessage]);
+        }
 
         setContacts((prev) =>
           prev.map((contact) => {
@@ -401,6 +411,7 @@ const Homepage = () => {
     socket.current.on(
       "getUpdatedMessage",
       ({ updatedMessage, sender, receiver }: IGetRectionType) => {
+        setTyping("");
         setMessages((prev) =>
           prev.map((item) =>
             item._id === updatedMessage._id
@@ -457,6 +468,12 @@ const Homepage = () => {
       },
     );
 
+    socket.current.on("getTyping", ({ message, sender }: IGetTyping) => {
+      if (contact_ID === sender._id) {
+        setTyping(message);
+      }
+    });
+
     return () => {
       socket.current?.off("getCreateUser");
       socket.current?.off("getNewMessage");
@@ -470,7 +487,7 @@ const Homepage = () => {
 
   return (
     <>
-      <div className="w-80 h-screen border-r inset-0 fixed z-50 bg-background">
+      <div className="w-80 h-screen border-r inset-0 fixed z-50 bg-background sidebar-custom-scrollbar overflow-y-scroll">
         {isLoading ? (
           <div className="w-full h-[95vh] flex justify-center items-center">
             <Loader2 size={50} className="animate-spin" />
@@ -488,7 +505,7 @@ const Homepage = () => {
           />
         ) : (
           <div className="w-full relative">
-            <TopChat />
+            <TopChat messages={messages} />
             <Chat
               messageForm={messageForm}
               onSubmitMessage={onSubmitMessage}
@@ -496,6 +513,7 @@ const Homepage = () => {
               onReadMessages={onReadMessages}
               onReaction={onReaction}
               onDeleteMessage={onDeleteMessage}
+              onTyping={onTyping}
             />
           </div>
         )}
@@ -524,4 +542,9 @@ interface IGetDeleteMessageType {
   sender: IUser;
   deletedMessage: IMessage;
   filteredMessages: IMessage[];
+}
+
+interface IGetTyping {
+  message: string;
+  sender: IUser;
 }

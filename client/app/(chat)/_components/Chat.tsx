@@ -5,7 +5,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { messageSchema } from "@/lib/validation";
 import { Paperclip, Send, Smile } from "lucide-react";
-import React, { FC, useEffect, useRef } from "react";
+import React, { ChangeEvent, FC, useEffect, useRef, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import z from "zod";
 import emojies from "@emoji-mart/data";
@@ -20,12 +20,22 @@ import { ModeToggle } from "@/components/shared/modeToggle";
 import { useLoading } from "@/hooks/use-loading";
 import { IMessage, IUser } from "@/types";
 import { useCurrentContact } from "@/hooks/use-current";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { UploadDropzone } from "@/lib/uploadthing";
 
 interface Props {
   onSubmitMessage: (values: z.infer<typeof messageSchema>) => Promise<void>;
   onReadMessages: () => Promise<void>;
   onReaction: (reaction: string, messageId: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
+  onTyping: (e: ChangeEvent<HTMLInputElement>) => void;
   messageForm: UseFormReturn<z.infer<typeof messageSchema>>;
   messages: IMessage[];
 }
@@ -37,9 +47,11 @@ const Chat: FC<Props> = ({
   onReadMessages,
   onReaction,
   onDeleteMessage,
+  onTyping,
 }) => {
   const { loadMessage } = useLoading();
-  const { editedMessage } = useCurrentContact();
+  const { editedMessage, setEditedMesssage } = useCurrentContact();
+  const [isOpen, setIsOpen] = useState(false);
 
   const { resolvedTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -72,7 +84,7 @@ const Chat: FC<Props> = ({
   }, [editedMessage]);
 
   return (
-    <div className="min-h-[92vh] flex flex-col justify-end z-40">
+    <div className="min-h-[92vh] flex flex-col justify-end z-40 sidebar-custom-scrollbar ">
       {/* Loading */}
       {loadMessage && <ChatLoading />}
 
@@ -105,9 +117,26 @@ const Chat: FC<Props> = ({
           className="w-full flex relative gap-1"
           ref={scrollRef}
         >
-          <Button size={"icon"} type="button" variant={"secondary"}>
-            <Paperclip />
-          </Button>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button size={"icon"} type="button" variant={"secondary"}>
+                <Paperclip />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle></DialogTitle>
+              </DialogHeader>
+              <UploadDropzone
+                endpoint={"imageUploader"}
+                onClientUploadComplete={(res) => {
+                  onSubmitMessage({ text: "", image: res[0].url });
+                  setIsOpen(false);
+                }}
+                config={{ appendOnPaste: true, mode: "auto" }}
+              />
+            </DialogContent>
+          </Dialog>
 
           <FormField
             control={messageForm.control}
@@ -119,7 +148,11 @@ const Chat: FC<Props> = ({
                     placeholder="type a message"
                     value={field.value}
                     onBlur={() => field.onBlur()}
-                    onChange={(e) => field.onChange(e.target.value)}
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                      onTyping(e);
+                      if (e.target.value === "") setEditedMesssage(null);
+                    }}
                     ref={inputRef}
                     className="bg-secondary border-l border-l-muted-foreground border-r border-r-muted-foreground"
                   />

@@ -85,4 +85,11 @@ io.on("connection", (socket) => {
       }
     },
   );
+
+  socket.on("typing", ({ sender, receiver, message }) => {
+    const receiverSocketId = getSocketId(receiver._id);
+    if (receiverSocketId) {
+      socket.to(receiverSocketId).emit("getTyping", { sender, message });
+    }
+  });
 });
