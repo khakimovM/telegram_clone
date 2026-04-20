@@ -3,7 +3,6 @@
 import { Loader2 } from "lucide-react";
 import React, { ChangeEvent, useEffect, useRef, useState } from "react";
 import ContactList from "./_components/ContactList";
-import { useRouter, useSearchParams } from "next/navigation";
 import AddContact from "./_components/AddContact";
 import { useCurrentContact } from "@/hooks/use-current";
 import { useForm } from "react-hook-form";
@@ -35,11 +34,7 @@ const Homepage = () => {
   const { setOnlineUsers } = useAuth();
   const { playSound } = useAudio();
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const socket = useRef<ReturnType<typeof io> | null>(null);
-
-  const contact_ID = searchParams.get("chat");
 
   const contactForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
@@ -120,6 +115,10 @@ const Homepage = () => {
         receiver: data.receiver,
         sender: data.sender,
       });
+
+      if (!data.sender.muted) {
+        playSound(data.sender.sendingSound);
+      }
 
       // Kontaktlar ro'yxatida oxirgi xabarni yangilash
       setContacts((prev) =>
@@ -338,7 +337,6 @@ const Homepage = () => {
 
   // Socket ulanish
   useEffect(() => {
-    router.replace("/");
     socket.current = io("ws://localhost:5000");
     return () => {
       socket.current?.disconnect();
@@ -373,8 +371,8 @@ const Homepage = () => {
     socket.current.on(
       "getNewMessage",
       ({ newMessage, sender, receiver }: IGetSocketType) => {
-        setTyping("");
-        if (contact_ID === sender._id) {
+        setTyping({ message: "", sender: null });
+        if (currentContact?._id === newMessage.sender._id) {
           setMessages((prev) => [...prev, newMessage]);
         }
 
@@ -386,7 +384,9 @@ const Homepage = () => {
                 lastMessage: {
                   ...newMessage,
                   status:
-                    contact_ID === sender._id ? CONST.READ : newMessage.status,
+                    currentContact?._id === sender._id
+                      ? CONST.READ
+                      : newMessage.status,
                 },
               };
             }
@@ -411,7 +411,7 @@ const Homepage = () => {
     socket.current.on(
       "getUpdatedMessage",
       ({ updatedMessage, sender, receiver }: IGetRectionType) => {
-        setTyping("");
+        setTyping({ message: "", sender: null });
         setMessages((prev) =>
           prev.map((item) =>
             item._id === updatedMessage._id
@@ -469,8 +469,8 @@ const Homepage = () => {
     );
 
     socket.current.on("getTyping", ({ message, sender }: IGetTyping) => {
-      if (contact_ID === sender._id) {
-        setTyping(message);
+      if (currentContact?._id === sender._id) {
+        setTyping({ message, sender });
       }
     });
 
@@ -479,7 +479,7 @@ const Homepage = () => {
       socket.current?.off("getNewMessage");
       socket.current?.off("getReadMessages");
     };
-  }, [session?.currentUser, contact_ID]);
+  }, [session?.currentUser, currentContact?._id]);
 
   useEffect(() => {
     getMessages();

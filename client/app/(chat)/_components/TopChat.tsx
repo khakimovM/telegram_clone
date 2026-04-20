@@ -44,10 +44,10 @@ const TopChat: FC<Props> = ({ messages }) => {
           <h2 className="font-medium text-sm">{currentContact?.email}</h2>
 
           {/* Is typing */}
-          {typing.length > 0 ? (
+          {typing.message.length > 0 ? (
             <div className="text-xs flex gap-1 items-center text-muted-foreground">
               <p className="text-secondary-foreground animate-pulse line-clamp-1">
-                {sliceText(typing, 20)}
+                {sliceText(typing.message, 20)}
               </p>
               <div className="self-end mb-1">
                 <div className="flex justify-center items-center gap-1">

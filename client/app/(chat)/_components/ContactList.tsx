@@ -20,7 +20,6 @@ interface Props {
 
 const ContactList: FC<Props> = ({ contacts }) => {
   let [query, setQuery] = useState("");
-  const router = useRouter();
   const { currentContact, setCurrentContact } = useCurrentContact();
   const { onlineUsers } = useAuth();
   const { data: session } = useSession();
@@ -44,7 +43,6 @@ const ContactList: FC<Props> = ({ contacts }) => {
     const onChat = () => {
       if (currentContact?._id === contact._id) return;
       setCurrentContact(contact);
-      router.push(`/?chat=${contact._id}`);
     };
 
     return (

@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { UploadDropzone } from "@/lib/uploadthing";
+import { useSession } from "next-auth/react";
 
 interface Props {
   onSubmitMessage: (values: z.infer<typeof messageSchema>) => Promise<void>;
@@ -50,12 +51,23 @@ const Chat: FC<Props> = ({
   onTyping,
 }) => {
   const { loadMessage } = useLoading();
-  const { editedMessage, setEditedMesssage } = useCurrentContact();
+  const { editedMessage, setEditedMesssage, currentContact } =
+    useCurrentContact();
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session } = useSession();
 
   const { resolvedTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLFormElement | null>(null);
+
+  const filtredMessages = messages.filter(
+    (message, index, self) =>
+      ((message.sender._id === session?.currentUser._id &&
+        message.receiver._id === currentContact?._id) ||
+        (message.sender._id === currentContact?._id &&
+          message.receiver._id === session?.currentUser._id)) &&
+      index === self.findIndex((m) => m._id === message._id),
+  );
 
   const handleEmojiSelect = (emoji: string) => {
     const input = inputRef.current;
@@ -89,7 +101,7 @@ const Chat: FC<Props> = ({
       {loadMessage && <ChatLoading />}
 
       {/* Messages */}
-      {messages.map((message) => (
+      {filtredMessages.map((message) => (
         <MessageCard
           key={message._id}
           message={message}
@@ -99,7 +111,7 @@ const Chat: FC<Props> = ({
       ))}
 
       {/* Start conversation */}
-      {messages.length === 0 && (
+      {filtredMessages.length === 0 && (
         <div className="w-full h-[88vh] flex items-center justify-center">
           <div
             className="text-[100px] cursor-pointer"
@@ -181,8 +193,6 @@ const Chat: FC<Props> = ({
           <Button size={"icon"} type="submit">
             <Send />
           </Button>
-
-          <ModeToggle />
         </form>
       </Form>
     </div>
