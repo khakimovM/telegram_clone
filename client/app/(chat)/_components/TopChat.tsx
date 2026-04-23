@@ -26,12 +26,10 @@ const TopChat: FC<Props> = ({ messages }) => {
   const { onlineUsers } = useAuth();
   const { typing } = useLoading();
 
-  const isOnline = onlineUsers.some(
-    (user) => user._id === currentContact?._id,
-  );
+  const isOnline = onlineUsers.some((user) => user._id === currentContact?._id);
 
   return (
-    <div className="w-full flex justify-between items-center h-[60px] border-b sticky top-0 z-50 px-4 bg-background shadow-sm">
+    <div className="w-full flex justify-between items-center h-15 border-b sticky top-0 z-50 px-4 bg-background shadow-sm">
       {/* Left: avatar + name + status */}
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -57,7 +55,7 @@ const TopChat: FC<Props> = ({ messages }) => {
 
           {typing.message.length > 0 ? (
             <div className="flex items-center gap-1">
-              <p className="text-xs text-primary animate-pulse truncate max-w-[160px]">
+              <p className="text-xs text-primary animate-pulse truncate max-w-40">
                 {sliceText(typing.message, 22)}
               </p>
               <div className="flex items-end gap-0.5 mb-0.5">
@@ -71,7 +69,9 @@ const TopChat: FC<Props> = ({ messages }) => {
               {isOnline ? (
                 <span className="text-green-500">online</span>
               ) : (
-                <span className="text-muted-foreground">last seen recently</span>
+                <span className="text-muted-foreground">
+                  last seen recently
+                </span>
               )}
             </p>
           )}

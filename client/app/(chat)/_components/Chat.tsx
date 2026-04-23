@@ -151,7 +151,7 @@ const Chat: FC<Props> = ({
         <div className="shrink-0 flex items-center justify-between px-3 py-1.5 bg-primary/10 border-t border-primary/20 text-sm">
           <div className="flex items-center gap-2 text-primary">
             <span className="font-medium">Editing:</span>
-            <span className="text-foreground truncate max-w-[200px]">
+            <span className="text-foreground truncate max-w-50">
               {editedMessage.text}
             </span>
           </div>
