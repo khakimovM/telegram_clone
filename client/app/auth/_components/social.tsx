@@ -14,22 +14,24 @@ const Social = () => {
   };
 
   return (
-    <div className="grid grid-cols-2 w-full gap-1">
+    <div className="grid grid-cols-2 w-full gap-2 px-1">
       <Button
         variant={"outline"}
         onClick={() => onSignIn("google")}
         disabled={isLoading}
+        className="rounded-xl h-10 gap-2"
       >
-        <span>Sign up with Google</span>
         <FaGoogle />
+        <span>Google</span>
       </Button>
       <Button
         variant={"outline"}
         onClick={() => onSignIn("github")}
         disabled={isLoading}
+        className="rounded-xl h-10 gap-2"
       >
-        <span>Sign up with GitHub</span>
         <FaGithub />
+        <span>GitHub</span>
       </Button>
     </div>
   );

@@ -26,63 +26,78 @@ const reactions = ["😂", "❤", "🔥", "👍", "👎"];
 const MessageCard: FC<Props> = ({ message, onReaction, onDeleteMessage }) => {
   const { currentContact, setEditedMesssage } = useCurrentContact();
 
+  const isReceived = message.sender._id === currentContact?._id;
+  const isSent = !isReceived;
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>
         <div
           className={cn(
-            "m-2.5 font-medium text-xs flex",
-            message.sender._id === currentContact?._id
-              ? "justify-start"
-              : "justify-end",
+            "mx-3 font-medium text-xs flex",
+            isReceived ? "justify-start" : "justify-end",
+            message.reaction ? "mt-1 mb-5" : "my-1",
           )}
         >
           <div
             className={cn(
-              "relative inline p-2 pl-2.5 pr-12 max-w-full",
-              message.sender._id === currentContact?._id
-                ? "bg-primary"
-                : "bg-secondary",
+              "relative p-2.5 pl-3 pr-12 max-w-[72%] shadow-sm wrap-break-word",
+              isReceived
+                ? "bg-primary text-white rounded-2xl rounded-tl-sm"
+                : "bg-secondary text-foreground rounded-2xl rounded-tr-sm",
             )}
           >
             {message.image && (
-              <Image
-                src={message.image}
-                alt={message.image}
-                width={200}
-                height={150}
-              />
-            )}
-            {message.text.length > 0 && (
-              <p className="text-sm text-white">{message.text}</p>
+              <div className="mb-1 rounded-lg overflow-hidden">
+                <Image
+                  src={message.image}
+                  alt={message.image}
+                  width={220}
+                  height={160}
+                  className="object-cover rounded-lg"
+                />
+              </div>
             )}
 
-            <div className="text-[9px] p-px absolute bottom-0 right-1 opacity-60 flex gap-0.75">
-              <p> {format(message.updatedAt, "hh:mm")}</p>
-              <div className="self-end">
-                {message.receiver._id === currentContact?._id &&
-                  (message.status === CONST.READ ? (
-                    <CheckCheck size={12} />
+            {message.text.length > 0 && (
+              <p className="text-sm leading-relaxed">{message.text}</p>
+            )}
+
+            <div
+              className={cn(
+                "text-[10px] absolute bottom-1 right-2 flex items-center gap-0.5",
+                isReceived ? "text-white/70" : "text-muted-foreground",
+              )}
+            >
+              <span>{format(message.updatedAt, "HH:mm")}</span>
+              {isSent && (
+                <span className="ml-0.5">
+                  {message.status === CONST.READ ? (
+                    <CheckCheck size={12} className="text-primary" />
                   ) : (
                     <Check size={12} />
-                  ))}
-              </div>
+                  )}
+                </span>
+              )}
             </div>
 
-            <span className="absolute -right-2 -bottom-2">
-              {message.reaction}
-            </span>
+            {message.reaction && (
+              <span className="absolute -bottom-4 -right-1 text-sm bg-background border border-border/60 shadow-sm rounded-full px-1.5 py-0.5 leading-none select-none">
+                {message.reaction}
+              </span>
+            )}
           </div>
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-56 p-1 mb-10">
-        <ContextMenuItem className="grid grid-cols-5">
+
+      <ContextMenuContent className="w-56 p-1.5 rounded-xl shadow-xl">
+        <ContextMenuItem className="grid grid-cols-5 rounded-lg p-1 focus:bg-transparent">
           {reactions.map((reaction) => (
             <div
               key={reaction}
               className={cn(
-                "text-xl cursor-pointer p-1 hover:bg-primary/50 transition-all flex items-center justify-center",
-                message.reaction === reaction && "bg-primary/50",
+                "text-xl cursor-pointer p-1.5 hover:bg-primary/20 transition-all flex items-center justify-center rounded-lg",
+                message.reaction === reaction && "bg-primary/20",
               )}
               onClick={() => onReaction(reaction, message._id)}
             >
@@ -90,25 +105,26 @@ const MessageCard: FC<Props> = ({ message, onReaction, onDeleteMessage }) => {
             </div>
           ))}
         </ContextMenuItem>
-        {message.sender._id !== currentContact?._id && (
+
+        {isSent && (
           <>
             <ContextMenuSeparator />
 
             {!message.image && (
               <ContextMenuItem
-                className="cursor-pointer"
+                className="cursor-pointer rounded-lg gap-2"
                 onClick={() => setEditedMesssage(message)}
               >
-                <Edit2 size={14} className="mr-2" />
+                <Edit2 size={14} />
                 <span>Edit</span>
               </ContextMenuItem>
             )}
 
             <ContextMenuItem
-              className="cursor-pointer"
+              className="cursor-pointer rounded-lg gap-2 text-destructive focus:text-destructive"
               onClick={() => onDeleteMessage(message._id)}
             >
-              <Trash size={14} className="mr-2" />
+              <Trash size={14} />
               <span>Delete</span>
             </ContextMenuItem>
           </>

@@ -13,7 +13,7 @@ import { useCurrentContact } from "@/hooks/use-current";
 import { useLoading } from "@/hooks/use-loading";
 import { sliceText } from "@/lib/utils";
 import { IMessage } from "@/types";
-import { Settings2 } from "lucide-react";
+import { Info } from "lucide-react";
 import Image from "next/image";
 import React, { FC } from "react";
 
@@ -26,132 +26,152 @@ const TopChat: FC<Props> = ({ messages }) => {
   const { onlineUsers } = useAuth();
   const { typing } = useLoading();
 
+  const isOnline = onlineUsers.some(
+    (user) => user._id === currentContact?._id,
+  );
+
   return (
-    <div className="w-full flex justify-between items-center h-[8vh] border-b sticky top-0 z-50 p-2 bg-background">
-      <div className="flex items-center">
-        <Avatar>
-          <AvatarImage
-            src={currentContact?.avatar}
-            alt={currentContact?.email}
-            className="object-cover"
-          />
-          <AvatarFallback className="uppercase">
-            {currentContact?.email[0]}
-          </AvatarFallback>
-        </Avatar>
+    <div className="w-full flex justify-between items-center h-[60px] border-b sticky top-0 z-50 px-4 bg-background shadow-sm">
+      {/* Left: avatar + name + status */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <Avatar className="w-10 h-10">
+            <AvatarImage
+              src={currentContact?.avatar}
+              alt={currentContact?.email}
+              className="object-cover"
+            />
+            <AvatarFallback className="uppercase text-sm font-semibold bg-primary/20 text-primary">
+              {currentContact?.email[0]}
+            </AvatarFallback>
+          </Avatar>
+          {isOnline && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
+          )}
+        </div>
 
-        <div className="ml-2">
-          <h2 className="font-medium text-sm">{currentContact?.email}</h2>
+        <div>
+          <h2 className="font-semibold text-sm capitalize">
+            {currentContact?.email.split("@")[0]}
+          </h2>
 
-          {/* Is typing */}
           {typing.message.length > 0 ? (
-            <div className="text-xs flex gap-1 items-center text-muted-foreground">
-              <p className="text-secondary-foreground animate-pulse line-clamp-1">
-                {sliceText(typing.message, 20)}
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-primary animate-pulse truncate max-w-[160px]">
+                {sliceText(typing.message, 22)}
               </p>
-              <div className="self-end mb-1">
-                <div className="flex justify-center items-center gap-1">
-                  <div className="w-1 h-1 bg-secondary-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1 h-1 bg-secondary-foreground rounded-full animate-bounce [animation-delay:-0.10s]"></div>
-                  <div className="w-1 h-1 bg-secondary-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                </div>
+              <div className="flex items-end gap-0.5 mb-0.5">
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <div className="w-1 h-1 bg-primary rounded-full animate-bounce" />
               </div>
             </div>
           ) : (
             <p className="text-xs">
-              {onlineUsers.some((user) => user._id === currentContact?._id) ? (
-                <>
-                  <span className="text-green-500">●</span> Online
-                </>
+              {isOnline ? (
+                <span className="text-green-500">online</span>
               ) : (
-                <>
-                  <span className="text-muted-foreground">●</span> Last seen
-                  recently
-                </>
+                <span className="text-muted-foreground">last seen recently</span>
               )}
             </p>
           )}
         </div>
       </div>
 
+      {/* Right: info button */}
       <Sheet>
         <SheetTrigger asChild>
-          <Button size={"icon"} variant={"secondary"}>
-            <Settings2 />
+          <Button
+            size={"icon"}
+            variant={"ghost"}
+            className="text-muted-foreground hover:text-primary"
+          >
+            <Info size={20} />
           </Button>
         </SheetTrigger>
-        <SheetContent className="w-80 p-2 overflow-y-scroll sidebar-custom-scrollbar">
-          <SheetHeader>
+        <SheetContent className="w-80 p-0 overflow-y-scroll sidebar-custom-scrollbar">
+          <SheetHeader className="sr-only">
             <SheetTitle />
           </SheetHeader>
 
-          <div className="mx-auto w-1/2 h-36 relative">
-            <Avatar className="w-full h-36">
+          {/* Profile header */}
+          <div className="bg-primary/10 dark:bg-primary/5 pt-8 pb-4 px-4 flex flex-col items-center gap-3">
+            <Avatar className="w-24 h-24">
               <AvatarImage
                 src={currentContact?.avatar}
                 alt={currentContact?.email}
                 className="object-cover"
               />
-              <AvatarFallback className="uppercase text-6xl font-spaceGrotest">
+              <AvatarFallback className="uppercase text-4xl font-semibold bg-primary/20 text-primary">
                 {currentContact?.email[0]}
               </AvatarFallback>
             </Avatar>
+            <div className="text-center">
+              <h1 className="font-semibold text-lg capitalize">
+                {currentContact?.email.split("@")[0]}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {currentContact?.email}
+              </p>
+            </div>
           </div>
 
-          <Separator className="my-2" />
-
-          <h1 className="text-center font-spaceGrotest text-xl capitalize">
-            {currentContact?.email}
-          </h1>
-
-          <div className="flex flex-col space-y-1">
-            {currentContact?.firstName && (
-              <div className="flex items-center gap-1 mt-4">
-                <p className="font-spaceGrotest">First Name: </p>
-                <p className="font-spaceGrotest text-muted-foreground">
-                  {currentContact?.firstName}
-                </p>
-              </div>
-            )}
-
-            {currentContact?.lastName && (
-              <div className="flex items-center gap-1 mt-4">
-                <p className="font-spaceGrotest">Last Name: </p>
-                <p className="font-spaceGrotest text-muted-foreground">
-                  {currentContact?.lastName}
-                </p>
+          {/* Info section */}
+          <div className="p-4 space-y-3">
+            {(currentContact?.firstName || currentContact?.lastName) && (
+              <div className="bg-secondary rounded-xl px-3 py-2.5 space-y-2">
+                {currentContact?.firstName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">First name</p>
+                    <p className="text-sm font-medium">
+                      {currentContact.firstName}
+                    </p>
+                  </div>
+                )}
+                {currentContact?.lastName && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last name</p>
+                    <p className="text-sm font-medium">
+                      {currentContact.lastName}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {currentContact?.bio && (
-              <div className="flex items-center gap-1 mt-4">
-                <p className="font-spaceGrotest">
-                  bio:{" "}
-                  <span className="font-spaceGrotest text-muted-foreground">
-                    {currentContact?.bio}
-                  </span>
-                </p>
+              <div className="bg-secondary rounded-xl px-3 py-2.5">
+                <p className="text-xs text-muted-foreground">Bio</p>
+                <p className="text-sm">{currentContact.bio}</p>
               </div>
             )}
-
-            <Separator className="my-2" />
-
-            <h2 className="text-xl">Image</h2>
-            <div className="flex flex-col space-y-2">
-              {messages
-                .filter((msg) => msg.image)
-                .map((msg) => (
-                  <div className="w-full h-36 relative">
-                    <Image
-                      src={msg.image}
-                      alt={msg._id}
-                      fill
-                      className="object-cover rounded-md"
-                    />
-                  </div>
-                ))}
-            </div>
           </div>
+
+          {/* Shared images */}
+          {messages.some((msg) => msg.image) && (
+            <div className="px-4 pb-4">
+              <h2 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+                Shared Media
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {messages
+                  .filter((msg) => msg.image)
+                  .map((msg) => (
+                    <div
+                      key={msg._id}
+                      className="w-full h-28 relative rounded-xl overflow-hidden"
+                    >
+                      <Image
+                        src={msg.image}
+                        alt={msg._id}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </div>

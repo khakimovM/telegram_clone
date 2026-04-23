@@ -337,7 +337,7 @@ const Homepage = () => {
 
   // Socket ulanish
   useEffect(() => {
-    socket.current = io("ws://localhost:5000");
+    socket.current = io(process.env.NEXT_PUBLIC_SOCKET_URL!);
     return () => {
       socket.current?.disconnect();
     }; // Cleanup
